@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NutriAgent — Food Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── reset & tokens ─────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #0a0d07;
+      --surface:    #131710;
+      --surface-2:  #1c2116;
+      --surface-3:  #252b1e;
+      --accent:     #a3e635;
+      --accent-dim: #6b9a1e;
+      --accent-glow: rgba(163, 230, 53, .12);
+      --text:       #eae8e3;
+      --text-dim:   #8a8982;
+      --text-muted: #5c5b56;
+      --danger:     #f87171;
+      --radius:     14px;
+      --radius-sm:  8px;
+      --font-body:  'DM Sans', system-ui, sans-serif;
+      --font-display: 'Playfair Display', Georgia, serif;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Ambient grain overlay for texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: .035;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Ambient glow spot */
+    body::after {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      top: -200px; right: -100px;
+      background: radial-gradient(circle, rgba(163,230,53,.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── header ─────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--surface-2);
+      background: var(--surface);
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), #d9f99d);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 20px;
+      filter: drop-shadow(0 0 10px rgba(163, 230, 53, .3));
+      flex-shrink: 0;
+    }
+
+    .header-text { display: flex; flex-direction: column; gap: 1px; }
+
+    header h1 {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    header .subtitle {
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--surface-2);
+      background: var(--surface-2);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: grid; place-items: center;
+      font-size: .9rem;
+      transition: all .15s;
+    }
+
+    .btn-icon:hover {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .btn-icon.hidden { display: none; }
+
+    .badge {
+      font-size: .6rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--accent-dim);
+      border: 1px solid rgba(107,154,30,.3);
+      padding: 3px 8px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+
+    /* ── chat area ──────────────────────────────────── */
+    #chat {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+      position: relative;
+      z-index: 1;
+    }
+
+    #chat::-webkit-scrollbar { width: 5px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+    /* ── message bubbles ───────────────────────────── */
+    .msg {
+      max-width: 82%;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      line-height: 1.65;
+      font-size: .9rem;
+      animation: fadeUp .3s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 500;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 2px 16px rgba(163, 230, 53, .15);
+    }
+
+    .msg.assistant {
+      align-self: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-left: 3px solid var(--accent-dim);
+      border-bottom-left-radius: 4px;
+      overflow-x: auto;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    /* ── tables inside messages ─────────────────────── */
+    .msg.assistant table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: .82rem;
+      border: 1px solid var(--surface-2);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .msg.assistant thead th {
+      background: var(--surface-2);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid var(--accent-dim);
+    }
+
+    .msg.assistant tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--surface-2);
+      color: var(--text);
+      vertical-align: top;
+    }
+
+    .msg.assistant tbody tr:last-child td { border-bottom: none; }
+
+    .msg.assistant tbody tr:hover { background: rgba(163, 230, 53, .03); }
+
+    /* ── inline elements ───────────────────────────── */
+    .msg.assistant h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      margin: 16px 0 8px;
+      color: var(--text);
+    }
+
+    .msg.assistant h4 {
+      font-size: .88rem;
+      font-weight: 700;
+      margin: 14px 0 6px;
+      color: var(--text);
+    }
+
+    .msg.assistant code {
+      background: var(--surface-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: .82em;
+    }
+
+    .msg.assistant pre {
+      background: var(--surface-2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin: 10px 0;
+      overflow-x: auto;
+      font-size: .82rem;
+      border: 1px solid var(--surface-3);
+    }
+
+    .msg.assistant pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .msg.assistant strong { color: var(--accent); }
+
+    .msg.assistant ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .msg.assistant li {
+      margin: 4px 0;
+    }
+
+    .msg.assistant p + p { margin-top: 10px; }
+
+    /* ── system & tool-call messages ───────────────── */
+    .msg.system {
+      align-self: center;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .75rem;
+      text-align: center;
+      padding: 4px 12px;
+      max-width: 100%;
+    }
+
+    .msg.tool-call {
+      align-self: flex-start;
+      background: rgba(107, 154, 30, .06);
+      border: 1px dashed rgba(107, 154, 30, .25);
+      color: var(--accent-dim);
+      font-size: .72rem;
+      padding: 8px 14px;
+      font-family: 'DM Mono', monospace, monospace;
+      border-radius: var(--radius-sm);
+      max-width: 90%;
+    }
+
+    .msg.tool-call::before {
+      content: '⚡ ';
+    }
+
+    /* ── pipeline flow widget ─────────────────────── */
+    .pipeline-wrapper {
+      align-self: stretch;
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-radius: var(--radius);
+      padding: 18px 16px 12px;
+      animation: fadeUp .35s cubic-bezier(.22, 1, .36, 1);
+      transition: opacity .6s ease, max-height .6s ease, padding .6s ease, margin .6s ease;
+      max-height: 180px;
+      overflow: hidden;
+    }
+
+    .pipeline-wrapper.collapsed {
+      max-height: 32px;
+      padding: 8px 16px;
+      opacity: .55;
+    }
+
+    .pipeline-flow {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .pipeline-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 56px;
+      flex-shrink: 0;
+    }
+
+    .pipeline-node .node-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 2px solid var(--surface-3);
+      display: grid; place-items: center;
+      font-size: 15px;
+      transition: all .35s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+    }
+
+    .pipeline-node.active .node-icon {
+      background: rgba(163, 230, 53, .08);
+      border-color: var(--accent);
+      box-shadow: 0 0 14px rgba(163, 230, 53, .25);
+      animation: nodePulse 1.6s ease-in-out infinite;
+    }
+
+    .pipeline-node.complete .node-icon {
+      background: rgba(163, 230, 53, .1);
+      border-color: var(--accent-dim);
+    }
+
+    .pipeline-node .node-label {
+      font-size: .6rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      font-weight: 500;
+      transition: color .35s;
+      white-space: nowrap;
+    }
+
+    .pipeline-node.active .node-label { color: var(--accent); }
+    .pipeline-node.complete .node-label { color: var(--accent-dim); }
+
+    @keyframes nodePulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(163, 230, 53, .15); }
+      50%      { box-shadow: 0 0 22px rgba(163, 230, 53, .45); }
+    }
+
+    .pipeline-connector {
+      flex: 1;
+      height: 2px;
+      min-width: 16px;
+      max-width: 48px;
+      background: var(--surface-3);
+      margin-top: 18px; /* vertically centre with node-icon */
+      border-radius: 1px;
+      transition: background .35s, box-shadow .35s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pipeline-connector.active {
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(163, 230, 53, .3);
+    }
+
+    .pipeline-connector.active::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(163, 230, 53, .6), transparent);
+      animation: connectorFlow 1s ease-in-out infinite;
+    }
+
+    @keyframes connectorFlow {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .pipeline-connector.complete {
+      background: var(--accent-dim);
+      box-shadow: none;
+    }
+
+    .pipeline-connector.complete::after { display: none; }
+
+    .pipeline-detail {
+      text-align: center;
+      font-size: .68rem;
+      color: var(--text-dim);
+      margin-top: 10px;
+      min-height: 16px;
+      transition: color .3s;
+      letter-spacing: .01em;
+    }
+
+    .pipeline-detail.done { color: var(--accent-dim); }
+
+    /* Collapsed summary line */
+    .pipeline-summary {
+      display: none;
+      font-size: .65rem;
+      color: var(--text-muted);
+      letter-spacing: .02em;
+    }
+
+    .pipeline-wrapper.collapsed .pipeline-flow { display: none; }
+    .pipeline-wrapper.collapsed .pipeline-detail { display: none; }
+    .pipeline-wrapper.collapsed .pipeline-summary { display: flex; align-items: center; gap: 6px; }
+
+    /* responsive */
+    @media (max-width: 600px) {
+      .pipeline-node { min-width: 44px; }
+      .pipeline-node .node-icon { width: 30px; height: 30px; font-size: 13px; }
+      .pipeline-node .node-label { font-size: .55rem; }
+      .pipeline-connector { margin-top: 15px; min-width: 10px; }
+    }
+
+    /* ── welcome screen ────────────────────────────── */
+    #welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 24px;
+      text-align: center;
+      animation: fadeIn .5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .welcome-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, var(--accent), #d9f99d);
+      border-radius: 20px;
+      display: grid; place-items: center;
+      font-size: 36px;
+      margin-bottom: 24px;
+      filter: drop-shadow(0 0 24px rgba(163, 230, 53, .2));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+
+    #welcome h2 {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--accent), #d9f99d 60%, #fde68a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    #welcome .tagline {
+      color: var(--text-dim);
+      line-height: 1.6;
+      margin-bottom: 32px;
+      max-width: 400px;
+      font-size: .9rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      max-width: 520px;
+    }
+
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      color: var(--text-dim);
+      padding: 10px 18px;
+      border-radius: 100px;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22, 1, .36, 1);
+      font-family: var(--font-body);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(163, 230, 53, .08);
+    }
+
+    .chip .chip-emoji { font-size: 1rem; }
+
+    /* ── typing indicator ─────────────────────────── */
+    .thinking {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 14px 18px;
+      align-self: flex-start;
+    }
+
+    .thinking span {
+      width: 6px; height: 6px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .thinking span:nth-child(2) { animation-delay: .2s; }
+    .thinking span:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { transform: scale(.6); opacity: .4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── input bar ─────────────────────────────────── */
+    .input-bar {
+      display: flex;
+      gap: 10px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--surface-2);
+      background: var(--surface);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    .input-bar input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--surface-2);
+      color: var(--text);
+      padding: 12px 18px;
+      border-radius: 100px;
+      font-size: .9rem;
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .input-bar input::placeholder { color: var(--text-muted); }
+
+    .input-bar input:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px rgba(163, 230, 53, .08);
+    }
+
+    .input-bar button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: grid; place-items: center;
+      transition: transform .15s, box-shadow .2s;
+      flex-shrink: 0;
+    }
+
+    .input-bar button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(163, 230, 53, .3);
+    }
+
+    .input-bar button:disabled {
+      opacity: .3;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── footer ───────────────────────────────────── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px 6px;
+      padding: 7px 20px;
+      font-size: .65rem;
+      color: var(--text-muted);
+      letter-spacing: .02em;
+      border-top: 1px solid var(--surface-2);
+      background: var(--bg);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    footer a {
+      color: var(--accent-dim);
+      text-decoration: none;
+      transition: color .15s;
+    }
+
+    footer a:hover { color: var(--accent); }
+
+    footer .sep { opacity: .25; }
+
+    /* ── responsive ────────────────────────────────── */
+    @media (max-width: 600px) {
+      .msg { max-width: 94%; font-size: .85rem; }
+      header h1 { font-size: 1rem; }
+      #welcome h2 { font-size: 1.5rem; }
+      .badge { display: none; }
+      .chips { gap: 6px; }
+      .chip { padding: 8px 14px; font-size: .75rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="logo">🥑</div>
+    <div class="header-text">
+      <h1>NutriAgent</h1>
+      <span class="subtitle">Food Intelligence</span>
+    </div>
+    <div class="header-actions">
+      <button id="newChatBtn" class="btn-icon hidden" title="New conversation" aria-label="New conversation">↺</button>
+      <span class="badge">GLM-4.7-Flash</span>
+    </div>
+  </header>
+
+  <!-- Welcome screen (visible by default) -->
+  <div id="welcome">
+    <div class="welcome-icon">🥑</div>
+    <h2>Know what you eat.</h2>
+    <p class="tagline">Look up any food product, decode nutrition labels, compare items, and check allergens — powered by the world's largest open food database.</p>
+    <div class="chips">
+      <span class="chip" data-msg="What's the nutritional info for Nutella?"><span class="chip-emoji">🍫</span> Nutella nutrition</span>
+      <span class="chip" data-msg="Search for high-protein yogurts"><span class="chip-emoji">🥛</span> High-protein yogurts</span>
+      <span class="chip" data-msg="Compare Coca-Cola vs Pepsi nutritional values"><span class="chip-emoji">🥤</span> Coke vs Pepsi</span>
+      <span class="chip" data-msg="Scan barcode 5000159484695"><span class="chip-emoji">📷</span> Scan a barcode</span>
+      <span class="chip" data-msg="What are the allergens in product 3017620422003?"><span class="chip-emoji">⚠️</span> Check allergens</span>
+    </div>
+  </div>
+
+  <!-- Chat area (hidden by default) -->
+  <div id="chat" style="display: none;"></div>
+
+  <div class="input-bar">
+    <input id="input" type="text" placeholder="Ask about any food product…" autocomplete="off" />
+    <button id="send" aria-label="Send">➤</button>
+  </div>
+
+  <footer>
+    <span>Developed by <strong>Eduardo Arana</strong> &copy; 2026</span>
+    <span class="sep">·</span>
+    <a href="https://developers.cloudflare.com/agents/" target="_blank" rel="noopener">Cloudflare Agents SDK</a>
+    <span class="sep">·</span>
+    <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener">OpenFoodFacts</a>
+    <span class="sep">·</span>
+    <a href="https://z.ai" target="_blank" rel="noopener">GLM-4.7-Flash</a>
+  </footer>
+
+  <script>
+    /* ── DOM refs ─────────────────────────────────── */
+    const chat       = document.getElementById("chat");
+    const welcome    = document.getElementById("welcome");
+    const input      = document.getElementById("input");
+    const sendBtn    = document.getElementById("send");
+    const newChatBtn = document.getElementById("newChatBtn");
+    let ws;
+    let thinking  = false;
+    let hasMessages = false;
+    let pipelineEl = null;
+
+    /* ── pipeline config ─────────────────────────── */
+    const PIPELINE_STEPS = [
+      { id: "agent", icon: "🤖", label: "Agent" },
+      { id: "llm",   icon: "🧠", label: "LLM" },
+      { id: "mcp",   icon: "🔌", label: "MCP" },
+      { id: "tools", icon: "⚡", label: "Tools" },
+    ];
+
+    /* ── view switching ──────────────────────────── */
+    function showChat() {
+      if (hasMessages) return;
+      hasMessages = true;
+      welcome.style.display = "none";
+      chat.style.display = "flex";
+      newChatBtn.classList.remove("hidden");
+    }
+
+    function showWelcome() {
+      hasMessages = false;
+      // clear all messages
+      chat.innerHTML = "";
+      chat.style.display = "none";
+      welcome.style.display = "flex";
+      newChatBtn.classList.add("hidden");
+      input.value = "";
+      input.focus();
+      // reconnect for a fresh session
+      if (ws) { ws.onclose = null; ws.close(); }
+      connect();
+    }
+
+    newChatBtn.onclick = showWelcome;
+
+    /* ── connect ─────────────────────────────────── */
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      ws = new WebSocket(`${proto}//${location.host}/agents/nutri-agent/connect`);
+
+      ws.onopen = () => {};
+
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        switch (data.type) {
+          case "welcome":
+            break;
+          case "pipeline":
+            if (data.step === "done") {
+              collapsePipeline();
+            } else {
+              updatePipeline(data.step, data.status, data.detail);
+            }
+            break;
+          case "status":
+            if (data.status === "thinking") showThinking();
+            break;
+          case "tool_call":
+            hideThinking();
+            addToolCall(data.tool, data.args);
+            break;
+          case "response":
+            hideThinking();
+            removePipeline();
+            addAssistant(data.content);
+            break;
+          case "error":
+            hideThinking();
+            removePipeline();
+            addSystem(`⚠ ${data.message}`);
+            break;
+        }
+      };
+
+      ws.onclose = () => {
+        if (hasMessages) addSystem("Reconnecting…");
+        setTimeout(connect, 2000);
+      };
+    }
+
+    /* ── send ─────────────────────────────────────── */
+    function send(text) {
+      if (!text.trim() || !ws || ws.readyState !== 1) return;
+      showChat();
+      addUser(text);
+      ws.send(JSON.stringify({ type: "chat", content: text }));
+      input.value = "";
+      input.focus();
+    }
+
+    sendBtn.onclick = () => send(input.value);
+    input.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) send(input.value); };
+
+    // quick chips
+    document.querySelectorAll(".chip").forEach((c) =>
+      c.addEventListener("click", () => send(c.dataset.msg))
+    );
+
+    /* ── message rendering ────────────────────────── */
+    function addUser(text) {
+      const el = div("msg user");
+      el.textContent = text;
+      chat.appendChild(el);
+      scrollDown();
+    }
+
+    function addAssistant(md) {
+      const el = div("msg assistant");
+      el.innerHTML = renderMarkdown(md);
+      chat.appendChild(el);
+      scrollDown();
+      setThinking(false);
+    }
+
+    function addSystem(text) {
+      const el = div("msg system");
+      el.textContent = text;
+      chat.appendChild(el);
+      scrollDown();
+    }
+
+    function addToolCall(tool, args) {
+      const el = div("msg tool-call");
+      el.textContent = `${tool}(${typeof args === "string" ? args : JSON.stringify(args)})`;
+      chat.appendChild(el);
+      scrollDown();
+    }
+
+    function showThinking() {
+      if (thinking) return;
+      thinking = true;
+      const el = div("thinking");
+      el.id = "thinking";
+      el.innerHTML = "<span></span><span></span><span></span>";
+      chat.appendChild(el);
+      scrollDown();
+    }
+
+    function hideThinking() {
+      thinking = false;
+      const el = document.getElementById("thinking");
+      if (el) el.remove();
+    }
+
+    function setThinking(v) {
+      thinking = v;
+      sendBtn.disabled = v;
+    }
+
+    function div(cls) {
+      const d = document.createElement("div");
+      d.className = cls;
+      return d;
+    }
+
+    function scrollDown() {
+      requestAnimationFrame(() => chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" }));
+    }
+
+    /* ── pipeline flow widget ────────────────────── */
+    function createPipeline() {
+      const wrapper = div("pipeline-wrapper");
+      wrapper.id = "pipeline";
+
+      // flow row: nodes + connectors
+      const flow = div("pipeline-flow");
+      PIPELINE_STEPS.forEach((step, i) => {
+        const node = div("pipeline-node");
+        node.dataset.step = step.id;
+        node.innerHTML = `<div class="node-icon">${step.icon}</div><span class="node-label">${step.label}</span>`;
+        flow.appendChild(node);
+        if (i < PIPELINE_STEPS.length - 1) {
+          const conn = div("pipeline-connector");
+          conn.dataset.after = step.id;
+          flow.appendChild(conn);
+        }
+      });
+
+      // detail text
+      const detail = document.createElement("div");
+      detail.className = "pipeline-detail";
+
+      // collapsed summary (shown after collapse)
+      const summary = document.createElement("div");
+      summary.className = "pipeline-summary";
+
+      wrapper.appendChild(flow);
+      wrapper.appendChild(detail);
+      wrapper.appendChild(summary);
+
+      chat.appendChild(wrapper);
+      pipelineEl = wrapper;
+      scrollDown();
+    }
+
+    function updatePipeline(step, status, detail) {
+      if (!pipelineEl) createPipeline();
+      const stepIds = PIPELINE_STEPS.map(s => s.id);
+      const stepIdx = stepIds.indexOf(step);
+      if (stepIdx === -1) return;
+
+      // update nodes
+      pipelineEl.querySelectorAll(".pipeline-node").forEach((node, i) => {
+        node.classList.remove("active", "complete");
+        if (i < stepIdx) {
+          node.classList.add("complete");
+        } else if (i === stepIdx) {
+          node.classList.add(status === "complete" ? "complete" : "active");
+        }
+      });
+
+      // update connectors (connector i sits between node i and i+1)
+      pipelineEl.querySelectorAll(".pipeline-connector").forEach((conn, i) => {
+        conn.classList.remove("active", "complete");
+        if (i < stepIdx) {
+          conn.classList.add("complete");
+        } else if (i === stepIdx && status === "active") {
+          conn.classList.add("active");
+        } else if (i === stepIdx && status === "complete") {
+          conn.classList.add("complete");
+        }
+      });
+
+      // update detail text
+      const detailEl = pipelineEl.querySelector(".pipeline-detail");
+      if (detailEl && detail) detailEl.textContent = detail;
+
+      scrollDown();
+    }
+
+    function collapsePipeline() {
+      if (!pipelineEl) return;
+
+      // mark everything complete
+      pipelineEl.querySelectorAll(".pipeline-node").forEach(n => {
+        n.classList.remove("active");
+        n.classList.add("complete");
+      });
+      pipelineEl.querySelectorAll(".pipeline-connector").forEach(c => {
+        c.classList.remove("active");
+        c.classList.add("complete");
+      });
+
+      const detailEl = pipelineEl.querySelector(".pipeline-detail");
+      if (detailEl) { detailEl.textContent = "✓ Processing complete"; detailEl.classList.add("done"); }
+
+      // build the collapsed summary showing the path taken
+      const summaryEl = pipelineEl.querySelector(".pipeline-summary");
+      if (summaryEl) {
+        const completedSteps = [...pipelineEl.querySelectorAll(".pipeline-node.complete")];
+        const path = completedSteps.map(n => {
+          const s = PIPELINE_STEPS.find(s => s.id === n.dataset.step);
+          return s ? s.icon + " " + s.label : "";
+        }).filter(Boolean).join("  →  ");
+        summaryEl.innerHTML = `<span style="color:var(--accent-dim)">✓</span> ${path}`;
+      }
+
+      // collapse after a short pause
+      setTimeout(() => {
+        if (pipelineEl) pipelineEl.classList.add("collapsed");
+      }, 1200);
+
+      pipelineEl = null;
+    }
+
+    function removePipeline() {
+      // Clean up reference — the collapsed widget stays in chat history
+      pipelineEl = null;
+    }
+
+    /* ── markdown → HTML (robust table support) ─── */
+    function renderMarkdown(text) {
+      if (!text) return "";
+
+      // Split into lines for block-level processing
+      const lines = text.split('\n');
+      const blocks = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        // Detect table block (lines starting/containing pipes)
+        if (/^\s*\|/.test(line)) {
+          const tableLines = [];
+          while (i < lines.length && /^\s*\|/.test(lines[i])) {
+            tableLines.push(lines[i]);
+            i++;
+          }
+          blocks.push(buildTable(tableLines));
+          continue;
+        }
+
+        // Code block
+        if (/^```/.test(line)) {
+          const lang = line.replace(/^```/, '').trim();
+          const codeLines = [];
+          i++;
+          while (i < lines.length && !/^```/.test(lines[i])) {
+            codeLines.push(lines[i]);
+            i++;
+          }
+          i++; // skip closing ```
+          blocks.push(`<pre><code>${esc(codeLines.join('\n'))}</code></pre>`);
+          continue;
+        }
+
+        // Headers
+        if (/^### /.test(line)) { blocks.push(`<h4>${inline(line.slice(4))}</h4>`); i++; continue; }
+        if (/^## /.test(line))  { blocks.push(`<h3>${inline(line.slice(3))}</h3>`); i++; continue; }
+
+        // Bullet list
+        if (/^[-*] /.test(line.trim())) {
+          const items = [];
+          while (i < lines.length && /^\s*[-*] /.test(lines[i])) {
+            items.push(`<li>${inline(lines[i].replace(/^\s*[-*] /, ''))}</li>`);
+            i++;
+          }
+          blocks.push(`<ul>${items.join('')}</ul>`);
+          continue;
+        }
+
+        // Empty line
+        if (!line.trim()) { i++; continue; }
+
+        // Paragraph
+        const paraLines = [];
+        while (i < lines.length && lines[i].trim() && !/^\s*\|/.test(lines[i]) && !/^```/.test(lines[i]) && !/^#{2,3} /.test(lines[i]) && !/^\s*[-*] /.test(lines[i])) {
+          paraLines.push(lines[i]);
+          i++;
+        }
+        blocks.push(`<p>${inline(paraLines.join('<br/>'))}</p>`);
+      }
+
+      return blocks.join('');
+    }
+
+    function buildTable(rows) {
+      const parsed = rows
+        .map(r => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim()))
+        .filter(r => r.length > 0);
+
+      if (parsed.length === 0) return '';
+
+      // Detect separator row (----, :---, etc.)
+      let headerEnd = -1;
+      for (let j = 0; j < parsed.length; j++) {
+        if (parsed[j].every(c => /^[-:\s]+$/.test(c) && c.length > 0)) {
+          headerEnd = j;
+          break;
+        }
+      }
+
+      let html = '<table>';
+
+      if (headerEnd > 0) {
+        html += '<thead><tr>';
+        parsed[0].forEach(c => { html += `<th>${inline(c)}</th>`; });
+        html += '</tr></thead><tbody>';
+        for (let j = headerEnd + 1; j < parsed.length; j++) {
+          html += '<tr>';
+          parsed[j].forEach(c => { html += `<td>${inline(c)}</td>`; });
+          html += '</tr>';
+        }
+        html += '</tbody>';
+      } else {
+        // No header row detected — treat all as body
+        html += '<tbody>';
+        parsed.forEach(r => {
+          html += '<tr>';
+          r.forEach(c => { html += `<td>${inline(c)}</td>`; });
+          html += '</tr>';
+        });
+        html += '</tbody>';
+      }
+
+      html += '</table>';
+      return html;
+    }
+
+    function inline(s) {
+      return s
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+    }
+
+    function esc(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ── boot ──────────────────────────────────────── */
+    connect();
+    input.focus();
+  </script>
+</body>
+</html>

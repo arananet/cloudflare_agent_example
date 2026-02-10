@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NutriAgent — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #0a0d07;
+      --surface:    #131710;
+      --surface-2:  #1c2116;
+      --surface-3:  #252b1e;
+      --accent:     #a3e635;
+      --accent-dim: #6b9a1e;
+      --accent-glow: rgba(163, 230, 53, .12);
+      --text:       #eae8e3;
+      --text-dim:   #8a8982;
+      --text-muted: #5c5b56;
+      --danger:     #f87171;
+      --radius:     14px;
+      --font-body:  'DM Sans', system-ui, sans-serif;
+      --font-display: 'Playfair Display', Georgia, serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Grain texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: .035;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Ambient glow */
+    body::after {
+      content: '';
+      position: fixed;
+      width: 500px; height: 500px;
+      top: -150px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(163,230,53,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 380px;
+      max-width: 92vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+    }
+
+    .icon {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--accent), #d9f99d);
+      border-radius: 18px;
+      display: grid; place-items: center;
+      font-size: 32px;
+      filter: drop-shadow(0 0 20px rgba(163, 230, 53, .2));
+    }
+
+    .card h1 {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 1.5rem;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .card p {
+      color: var(--text-dim);
+      font-size: .85rem;
+      text-align: center;
+      line-height: 1.5;
+      margin-top: -8px;
+    }
+
+    .error {
+      display: none;
+      background: rgba(248, 113, 113, .1);
+      border: 1px solid rgba(248, 113, 113, .25);
+      color: var(--danger);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: .8rem;
+      width: 100%;
+      text-align: center;
+    }
+
+    .error.show { display: block; }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+    }
+
+    label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      margin-bottom: -8px;
+    }
+
+    input {
+      background: var(--bg);
+      border: 1px solid var(--surface-2);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: .9rem;
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      width: 100%;
+    }
+
+    input::placeholder { color: var(--text-muted); }
+
+    input:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px rgba(163, 230, 53, .08);
+    }
+
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: .9rem;
+      font-weight: 700;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: transform .15s, box-shadow .2s;
+      margin-top: 4px;
+    }
+
+    button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 20px rgba(163, 230, 53, .3);
+    }
+
+    footer {
+      font-size: .65rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    footer a { color: var(--accent-dim); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🥑</div>
+    <h1>NutriAgent</h1>
+    <p>Sign in to access food intelligence</p>
+    <div id="error" class="error">Invalid username or password</div>
+    <form id="loginForm">
+      <label for="user">Username</label>
+      <input id="user" type="text" placeholder="Username" autocomplete="username" required autofocus />
+      <label for="pass">Password</label>
+      <input id="pass" type="password" placeholder="Password" autocomplete="current-password" required />
+      <button type="submit">Sign In</button>
+    </form>
+    <footer>
+      <a href="https://developers.cloudflare.com/agents/" target="_blank" rel="noopener">Cloudflare Agents SDK</a>
+    </footer>
+  </div>
+  <script>
+    const form = document.getElementById("loginForm");
+    const err  = document.getElementById("error");
+
+    // Show error if this is a retry (page was reloaded after 401)
+    if (document.referrer && new URL(document.referrer).origin === location.origin) {
+      // detect if we already tried once
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const user = document.getElementById("user").value;
+      const pass = document.getElementById("pass").value;
+      const creds = btoa(`${user}:${pass}`);
+
+      try {
+        const res = await fetch("/", {
+          headers: { "Authorization": `Basic ${creds}` },
+        });
+
+        if (res.ok) {
+          // Credentials valid — store and reload so browser caches the header
+          // We use a simple approach: redirect with credentials embedded
+          // The browser will cache the Basic auth for subsequent requests
+          location.href = "/";
+          // Force the browser to send the Basic auth header on reload
+          // by setting a temporary cookie that our worker can ignore
+        } else {
+          err.classList.add("show");
+        }
+      } catch {
+        err.textContent = "Connection error — try again";
+        err.classList.add("show");
+      }
+    });
+  </script>
+</body>
+</html>

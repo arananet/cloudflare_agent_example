@@ -1,0 +1,50 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "nutri-agent"
+main = "src/index.ts"
+compatibility_date = "2025-02-02"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Assets ────────────────────────────────────────────
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+# ── Durable Objects ───────────────────────────────────
+[durable_objects]
+bindings = [
+  { name = "NUTRI_AGENT", class_name = "NutriAgent" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NutriAgent"]
+
+# ── Public vars (non-secret) ──────────────────────────
+[vars]
+GLM_MODEL = "GLM-4.7-Flash"
+GLM_BASE_URL = "https://api.z.ai/api/paas/v4"
+
+# ── Secrets (set via `wrangler secret put <KEY>`) ─────
+# GLM_API_KEY  — z.ai / BigModel API key
+# AUTH_USER    — Basic-auth username (optional)
+# AUTH_PASS    — Basic-auth password (optional)
+# MCP_API_KEY  — Bearer token for MCP Streamable HTTP server (optional)
+# A2A_API_KEY  — Bearer token for A2A protocol endpoint (optional)
+#
+# NEVER put secrets in this file or commit them to git.
+
+# ── Workers Builds (CI/CD) ────────────────────────────
+# When you connect this repo via the Cloudflare dashboard
+# (Workers & Pages → Settings → Builds), use these settings:
+#
+#   Build command:  npm install && npm run deploy
+#   Deploy command: npx wrangler deploy
+#   Root directory: /
+#
+# Secrets must also be configured in the dashboard under
+# Settings → Variables and Secrets before deploying.
+
+# ── Observability ─────────────────────────────────────
+[observability]
+enabled = true
